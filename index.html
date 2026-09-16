@@ -1,1 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVALAVIDA 워크데스크</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF3F9; --ink:#1F2E3D; --ink-soft:#46607A;
+    --accent:#3B82C4; --accent-dark:#2B628F;
+    --success:#1C9C8B; --danger:#E85D5D; --muted:#93A6B8;
+    --card:#FFFFFF; --line:#D7E3EE;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Gaegu',sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{max-width:1080px;margin:0 auto;padding:18px 16px 60px;}
+  .brand{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;}
+  .brand .mark{display:inline-block;width:14px;height:14px;background:var(--accent);border-radius:50%;}
+  h1{font-family:'Jua',sans-serif;font-weight:400;font-size:30px;margin:0 0 4px;color:var(--accent-dark);}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.5;font-family:'Gaegu',sans-serif;}
+
+  .layout{display:flex;gap:16px;align-items:flex-start;}
+  .sidebar{width:230px;flex-shrink:0;position:sticky;top:16px;display:flex;flex-direction:column;gap:12px;}
+  .main{flex:1;min-width:0;}
+
+  .panel{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 0 var(--line);}
+  .panel h2{font-family:'Jua',sans-serif;font-weight:400;font-size:17px;color:var(--accent-dark);margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;}
+
+  button{font-family:'Jua',sans-serif;font-weight:400;font-size:15px;border:none;border-radius:14px;cursor:pointer;}
+  .btn-refresh{background:#E4EEF8;color:var(--ink-soft);border:2px solid var(--line);padding:6px 12px;font-size:12.5px;border-radius:12px;display:flex;align-items:center;gap:5px;}
+  .btn-refresh:active{background:#D3E4F3;}
+  .btn-refresh.spin .ico{animation:spin 0.7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .btn-vlvd{background:var(--accent);color:#fff;width:100%;padding:14px;font-size:16px;margin-top:10px;box-shadow:0 3px 0 var(--accent-dark);}
+  .btn-vlvd:active{transform:translateY(2px);box-shadow:none;}
+  .btn-open-new{background:#E4EEF8;color:var(--ink-soft);border:2px solid var(--line);padding:8px 14px;font-size:12.5px;border-radius:10px;text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:'Jua',sans-serif;}
+
+  /* sidebar status widget */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .stat{background:#FFF8EF;border:2px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center;}
+  .stat .num{font-family:'Jua',sans-serif;font-weight:400;font-size:23px;line-height:1;}
+  .stat .lbl{font-size:11px;color:var(--muted);margin-top:4px;font-family:'Gaegu',sans-serif;}
+  .stat.orders .num{color:var(--ink);}
+  .stat.received .num{color:#2B7EC1;}
+  .stat.invoice .num{color:#5B6EE8;}
+  .stat.today .num{color:var(--success);}
+  .status-msg{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .status-msg.err{color:var(--danger);}
+
+  /* sidebar nav */
+  .nav-list{display:flex;flex-direction:column;gap:8px;}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;
+    padding:13px 14px;border-radius:14px;border:2px solid var(--line);background:var(--card);
+    font-family:'Jua',sans-serif;font-weight:400;font-size:16px;
+    color:var(--ink-soft);cursor:pointer;text-align:left;
+  }
+  .nav-item .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex-shrink:0;}
+  .nav-item.active{background:var(--accent);color:#fff;border-color:var(--accent-dark);}
+  .nav-item.active .dot{background:#fff;}
+
+  .view[hidden]{display:none;}
+
+  input[type=text]{width:100%;font-family:'Gaegu',sans-serif;font-size:17px;padding:13px;border:2px solid var(--line);border-radius:14px;background:#FFF8EF;color:var(--ink);}
+  input[type=text]:focus{outline:none;border-color:var(--accent);}
+  .search-row{display:flex;gap:8px;}
+  .search-row input{flex:1;}
+  .search-row button{flex-shrink:0;padding:0 20px;background:var(--accent);color:#fff;border-radius:14px;box-shadow:0 3px 0 var(--accent-dark);}
+  .search-row button:active{transform:translateY(2px);box-shadow:none;}
+
+  .result-item{display:flex;gap:12px;padding:13px 0;border-top:2px dashed var(--line);}
+  .result-item:first-child{border-top:none;}
+  .result-item img{width:58px;height:58px;object-fit:cover;border-radius:12px;flex-shrink:0;background:#E4EEF8;}
+  .result-item .info{flex:1;min-width:0;}
+  .result-item .name{font-weight:700;font-size:15.5px;font-family:'Gaegu',sans-serif;}
+  .result-item .opt{font-size:13.5px;color:var(--ink-soft);margin-top:1px;}
+  .result-item .meta{display:flex;gap:9px;margin-top:6px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center;}
+  .result-item .stock-badge{font-weight:700;padding:2px 10px;border-radius:10px;background:#E9F7EE;color:var(--success);}
+  .result-item .stock-badge.zero{background:#FBEAEA;color:var(--danger);}
+
+  .empty,.err,.loading{text-align:center;color:var(--muted);font-size:14px;padding:22px 8px;line-height:1.6;}
+  .err{color:var(--danger);}
+
+  .note{font-size:12.5px;color:var(--muted);line-height:1.6;margin-top:10px;padding:10px;background:#E4EEF8;border-radius:12px;}
+
+  /* 송장조회 */
+  .invoice-match{cursor:pointer;border-radius:12px;transition:background .12s;}
+  .invoice-match:hover{background:#F1F7FC;}
+  .invoice-match .go{color:var(--accent-dark);font-weight:700;}
+  .invoice-match .name{color:var(--accent-dark);}
+  textarea{width:100%;font-family:'Gaegu',sans-serif;font-size:14.5px;padding:12px;border:2px solid var(--line);border-radius:14px;background:#FFF8EF;color:var(--ink);resize:vertical;min-height:110px;line-height:1.5;}
+  textarea:focus{outline:none;border-color:var(--accent);}
+  .btn-row{display:flex;gap:8px;margin-top:10px;}
+  .btn-row button{flex:1;padding:10px;font-size:14px;}
+  .btn-secondary{background:#E4EEF8;color:var(--ink-soft);border:2px solid var(--line);}
+  .btn-secondary:active{background:#D3E4F3;}
+  .btn-danger-outline{background:#FFF;color:var(--danger);border:2px solid #F3C9C9;}
+  .btn-danger-outline:active{background:#FBEAEA;}
+  details.panel{padding:0;}
+  details.panel summary{list-style:none;cursor:pointer;padding:16px;font-family:'Jua',sans-serif;font-size:15px;color:var(--accent-dark);display:flex;justify-content:space-between;align-items:center;}
+  details.panel summary::-webkit-details-marker{display:none;}
+  details.panel summary .chip{font-family:'Gaegu',sans-serif;font-size:12px;color:var(--muted);background:#E4EEF8;padding:2px 10px;border-radius:10px;}
+  details.panel .details-body{padding:0 16px 16px;}
+  details.panel[open] summary{padding-bottom:6px;}
+
+  /* external link card (used for 행사일정 / 입고캘린더) */
+  .external-card{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:40px 20px;background:#E4EEF8;border-radius:16px;border:2px dashed var(--line);
+  }
+  .external-card .emoji{font-size:44px;margin-bottom:10px;}
+  .external-card .title{font-family:'Jua',sans-serif;font-size:20px;color:var(--ink);margin-bottom:6px;}
+  .external-card .desc{font-size:14px;color:var(--ink-soft);margin-bottom:16px;line-height:1.6;}
+  .external-card a.big-btn{
+    background:var(--accent);color:#fff;padding:14px 28px;border-radius:16px;
+    font-family:'Jua',sans-serif;font-size:17px;text-decoration:none;box-shadow:0 3px 0 var(--accent-dark);
+  }
+  .external-card a.big-btn:active{transform:translateY(2px);box-shadow:none;}
+
+  @media (max-width: 720px){
+    .layout{flex-direction:column;}
+    .sidebar{width:100%;position:static;flex-direction:row;flex-wrap:wrap;}
+    .sidebar .panel{flex:1;min-width:160px;}
+    .nav-list{flex-direction:row;flex:1;min-width:220px;flex-wrap:wrap;}
+    .nav-item{flex:1;justify-content:center;min-width:100px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="brand"><span class="mark"></span></div>
+  <h1>VIVALAVIDA 워크데스크 💙</h1>
+  <p class="sub">이지어드민 실시간 현황 · 재고 조회 · 공식몰 바로가기 · 행사/입고 일정</p>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="panel" style="margin-bottom:0;">
+        <h2><span>처리현황</span>
+          <button class="btn-refresh" id="status-refresh"><span class="ico">↻</span>새로고침</button>
+        </h2>
+        <div class="stat-grid" id="stat-grid">
+          <div class="stat orders"><div class="num">-</div><div class="lbl">발주</div></div>
+          <div class="stat received"><div class="num">-</div><div class="lbl">접수</div></div>
+          <div class="stat invoice"><div class="num">-</div><div class="lbl">송장</div></div>
+          <div class="stat today"><div class="num">-</div><div class="lbl">배송(금일)</div></div>
+        </div>
+        <div class="status-msg" id="status-msg">새로고침을 눌러 현황을 불러오세요.</div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-view="search"><span class="dot"></span>상품 조회</button>
+        <button class="nav-item" data-view="viva"><span class="dot"></span>비바 제품 검색</button>
+        <button class="nav-item" data-view="integrated"><span class="dot"></span>통합 제품 검색</button>
+        <button class="nav-item" data-view="invoice"><span class="dot"></span>송장 제품 검색</button>
+        <button class="nav-item" data-view="promo"><span class="dot"></span>행사 캘린더</button>
+        <button class="nav-item" data-view="incoming"><span class="dot"></span>입고 캘린더</button>
+      </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="view" id="view-search">
+        <div class="panel">
+          <h2>상품/재고 조회</h2>
+          <div class="search-row">
+            <input type="text" id="search-input" placeholder="상품명 검색 (예: Palm)">
+            <button id="search-go">조회</button>
+          </div>
+        </div>
+        <div class="panel" id="search-results">
+          <p class="empty">상품명을 검색해주세요.</p>
+        </div>
+      </div>
+
+      <div class="view" id="view-viva" hidden>
+        <div class="panel">
+          <h2>비바 제품 검색</h2>
+          <input type="text" id="viva-input" placeholder="예: 기모선택 My Youth 헤비테리 후드">
+          <button class="btn-vlvd" id="viva-go">공식몰(vlvd.kr)에서 검색 →</button>
+          <div class="note">이지어드민에서 확인한 상품명을 붙여넣고 누르면 vlvd.kr 검색 결과가 새 탭으로 열립니다.</div>
+        </div>
+      </div>
+
+      <div class="view" id="view-integrated" hidden>
+        <div class="panel" style="padding:0;overflow:hidden;">
+          <iframe id="integrated-search-frame" src="https://irelia-cib3.onrender.com/?v=20260915b" data-base="https://irelia-cib3.onrender.com/" title="통합검색" style="width:100%;height:78vh;min-height:560px;border:0;display:block;"></iframe>
+        </div>
+        <div class="note">
+          화면이 안 뜨면 <a href="https://irelia-cib3.onrender.com/" target="_blank" rel="noopener">여기를 눌러 새 창으로 열기 →</a>
+        </div>
+      </div>
+
+      <div class="view" id="view-invoice" hidden>
+        <div class="panel">
+          <h2>송장 제품 검색</h2>
+          <div class="external-card">
+            <div class="emoji">📦</div>
+            <div class="title">팀 공유 송장 제품 검색</div>
+            <div class="desc">송장번호로 상품을 찾는 기능은 이제 팀 전체가 공유하는 별도 페이지로 옮겼어요.<br>어느 컴퓨터에서 열어도 같은 데이터를 보고, 등록도 함께 할 수 있어요.</div>
+            <a class="big-btn" href="https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw" target="_blank">송장 제품 검색 열기 →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="view-promo" hidden>
+        <div class="panel">
+          <h2>비바라비다 행사 일정</h2>
+          <div class="external-card">
+            <div class="emoji">🎪</div>
+            <div class="title">행사 일정 캘린더</div>
+            <div class="desc">이 사이트는 보안 설정 때문에 화면 안에 바로 못 띄우고,<br>새 창으로만 열 수 있어요.</div>
+            <a class="big-btn" href="https://musinsa-dashboard-vercel.vercel.app/#promo" target="_blank">캘린더 열기 →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="view" id="view-incoming" hidden>
+        <div class="panel">
+          <h2>비바라비다 입고 캘린더</h2>
+          <div class="external-card">
+            <div class="emoji">📦</div>
+            <div class="title">입고 캘린더</div>
+            <div class="desc">이 사이트는 보안 설정 때문에 화면 안에 바로 못 띄우고,<br>새 창으로만 열 수 있어요.</div>
+            <a class="big-btn" href="https://musinsa-dashboard-vercel.vercel.app/#incoming" target="_blank">캘린더 열기 →</a>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+(function(){
+  const DOMAIN = 'WOOILSIN'; // VIVALAVIDA 도메인 코드
+  const BASE = 'https://vivalavida-proxy.onrender.com/proxy/api/stock'; // CORS 프록시 경유
+  const INTEGRATED_BASE = 'https://irelia-cib3.onrender.com/';
+
+  /* ---- Render 무료 서버 미리 깨워두기 ----
+     Render 무료 플랜은 한동안 요청이 없으면 서버가 꺼졌다가, 다음 요청이 오면
+     다시 켜지는 데 30초~1분 정도 걸립니다(그 사이 "SERVICE WAKING UP" 화면이 보임).
+     워크데스크를 열자마자, 그리고 열려있는 동안 주기적으로 백그라운드에서 살짝
+     요청을 보내서 실제로 탭을 클릭했을 때는 이미 깨어있도록 해둡니다. */
+  function pingWarm(url){
+    try{ fetch(url, {mode:'no-cors', cache:'no-store'}).catch(()=>{}); }catch(e){}
+  }
+  function warmServers(){
+    pingWarm(INTEGRATED_BASE);
+    pingWarm(`${BASE}/dashboard-status?domain=${DOMAIN}`);
+  }
+  warmServers();
+  setInterval(warmServers, 9 * 60 * 1000); // 9분마다 (Render가 잠들기 전에 계속 깨워둠)
+
+  const viewNames = ['search','viva','integrated','invoice','promo','incoming'];
+  const INVOICE_URL = 'https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw';
+  let invoiceAutoOpened = false;
+
+  function switchView(name){
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    const navBtn = document.querySelector(`.nav-item[data-view="${name}"]`);
+    if(navBtn) navBtn.classList.add('active');
+    viewNames.forEach(n=>{
+      document.getElementById('view-'+n).hidden = (n !== name);
+    });
+    // 송장 제품 검색 탭은 클릭 즉시 새 탭으로 검색 화면을 바로 열어줌 (버튼 한번 더 누르는 절차 생략)
+    if(name === 'invoice' && !invoiceAutoOpened){
+      invoiceAutoOpened = true;
+      window.open(INVOICE_URL, '_blank');
+    }
+  }
+
+  document.querySelectorAll('.nav-item').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchView(btn.dataset.view));
+  });
+
+  const statGrid = document.getElementById('stat-grid');
+  const statMsg = document.getElementById('status-msg');
+  const statusRefreshBtn = document.getElementById('status-refresh');
+
+  async function loadStatus(){
+    statusRefreshBtn.classList.add('spin');
+    statMsg.textContent = '불러오는 중...';
+    statMsg.className = 'status-msg';
+    try{
+      const res = await fetch(`${BASE}/dashboard-status?domain=${DOMAIN}`);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const nums = statGrid.querySelectorAll('.stat .num');
+      nums[0].textContent = data.orders ?? '-';
+      nums[1].textContent = data.received ?? '-';
+      nums[2].textContent = data.invoice ?? '-';
+      nums[3].textContent = data.deliveryToday ?? '-';
+      statMsg.textContent = '마지막 갱신: ' + new Date().toLocaleTimeString('ko-KR');
+      statMsg.className = 'status-msg';
+    }catch(e){
+      console.error(e);
+      statMsg.textContent = '불러오지 못했습니다.';
+      statMsg.className = 'status-msg err';
+    }finally{
+      statusRefreshBtn.classList.remove('spin');
+    }
+  }
+  statusRefreshBtn.addEventListener('click', loadStatus);
+
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+
+  async function runSearch(){
+    const q = searchInput.value.trim();
+    if(!q){ searchInput.focus(); return; }
+    searchResults.innerHTML = '<p class="loading">검색 중...</p>';
+    try{
+      const url = `${BASE}/search?q=${encodeURIComponent(q)}&domain=${DOMAIN}&password=`;
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.products || data.items || data.results || []);
+      if(!items.length){
+        searchResults.innerHTML = '<p class="empty">검색 결과가 없습니다.</p>';
+        return;
+      }
+      searchResults.innerHTML = items.map(item => `
+        <div class="result-item">
+          <img src="${escapeAttr(item.image || '')}" alt="" onerror="this.style.visibility='hidden'">
+          <div class="info">
+            <div class="name">${escapeHtml(item.name || '(이름없음)')}</div>
+            <div class="opt">${escapeHtml(item.option || '')}</div>
+            <div class="meta">
+              <span>${escapeHtml(item.code || '')}</span>
+              <span>${escapeHtml(item.location || '-')}</span>
+              <span class="stock-badge ${Number(item.stock) === 0 ? 'zero' : ''}">재고 ${item.stock ?? '-'}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }catch(e){
+      console.error(e);
+      searchResults.innerHTML = '<p class="err">조회에 실패했습니다.</p>';
+    }
+  }
+  document.getElementById('search-go').addEventListener('click', runSearch);
+  searchInput.addEventListener('keydown', e=>{ if(e.key==='Enter') runSearch(); });
+
+  function openStoreSearch(term){
+    if(!term) return;
+    window.open('https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(term), '_blank');
+  }
+
+  /* ---- 비바 제품 검색 (상품명 → 공식몰 vlvd.kr 바로 검색) ---- */
+  const vivaInput = document.getElementById('viva-input');
+  document.getElementById('viva-go').addEventListener('click', ()=>{
+    openStoreSearch(vivaInput.value.trim());
+  });
+  vivaInput.addEventListener('keydown', e=>{ if(e.key==='Enter') openStoreSearch(vivaInput.value.trim()); });
+
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function escapeAttr(s){ return escapeHtml(s); }
+})();
+</script>
+</body>
+</html>
 
