@@ -106,6 +106,41 @@
   details.panel .details-body{padding:0 16px 16px;}
   details.panel[open] summary{padding-bottom:6px;}
 
+
+  /* 송장 제품 검색 (카페24 주문 연동) */
+  .inv-auto{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--ink-soft);cursor:pointer;font-family:'Gaegu',sans-serif;}
+  .inv-auto input{width:18px;height:18px;accent-color:var(--accent);}
+  .inv-state{font-family:'Gaegu',sans-serif;font-size:12.5px;color:var(--muted);}
+  .inv-head{margin-top:16px;padding:12px 14px;border-radius:14px;background:#E4EEF8;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .inv-head b{color:var(--accent-dark);font-family:'Jua',sans-serif;font-weight:400;font-size:16px;}
+  .inv-card{margin-top:10px;padding:14px;border:2px solid var(--line);border-radius:16px;background:var(--card);}
+  .inv-card .pname{font-family:'Jua',sans-serif;font-size:20px;color:var(--accent-dark);line-height:1.35;word-break:keep-all;}
+  .inv-card .popt{margin-top:4px;font-size:14.5px;color:var(--ink-soft);}
+  .inv-card .pmeta{margin-top:4px;font-size:12.5px;color:var(--muted);}
+  .inv-card .pbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .inv-card .pbtns button{flex:1;min-width:140px;padding:11px;font-size:14.5px;}
+  .inv-card .pbtns .main{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);}
+  .inv-card .pbtns .main:active{transform:translateY(2px);box-shadow:none;}
+  .inv-warn{margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4DE;color:#8A5A00;font-size:13px;line-height:1.55;}
+  .inv-src{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;font-size:11.5px;background:#E4EEF8;color:var(--accent-dark);vertical-align:2px;}
+  .inv-src.ez{background:#F3E6F8;color:#6B2C86;}
+  .ez-help{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;}
+  .ez-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .ez-row input[type=file]{flex:1;min-width:200px;font-size:13.5px;}
+  .ez-row input[type=password]{flex:1;min-width:200px;padding:10px 12px;border:2px solid var(--line);border-radius:12px;font-size:14px;background:var(--card);color:var(--ink);}
+  .ez-row[hidden],.ez-link[hidden]{display:none;}
+  #ez-go{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);padding:10px 20px;font-size:15px;}
+  #ez-go:disabled{opacity:.6;}
+  .ez-msg{margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--ink-soft);}
+  .ez-msg.ok{color:#1F7A45;} .ez-msg.bad{color:#B3261E;}
+  .ez-link{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:12.5px;padding:0;box-shadow:none;}
+  .inv-recent-row{display:flex;gap:10px;align-items:baseline;padding:9px 6px;border-top:2px dashed var(--line);cursor:pointer;border-radius:10px;}
+  .inv-recent-row:first-child{border-top:none;}
+  .inv-recent-row:hover{background:#F1F7FC;}
+  .inv-recent-row .t{font-size:12px;color:var(--muted);flex-shrink:0;}
+  .inv-recent-row .n{font-family:'Jua',sans-serif;font-size:13.5px;color:var(--ink-soft);flex-shrink:0;}
+  .inv-recent-row .p{font-size:13.5px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
   /* external link card (used for 행사일정 / 입고캘린더) */
   .external-card{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -196,14 +231,32 @@
 
       <div class="view" id="view-invoice" hidden>
         <div class="panel">
-          <h2>송장 제품 검색</h2>
-          <div class="external-card">
-            <div class="emoji">📦</div>
-            <div class="title">팀 공유 송장 제품 검색</div>
-            <div class="desc">송장번호로 상품을 찾는 기능은 이제 팀 전체가 공유하는 별도 페이지로 옮겼어요.<br>어느 컴퓨터에서 열어도 같은 데이터를 보고, 등록도 함께 할 수 있어요.</div>
-            <a class="big-btn" href="https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw" target="_blank">송장 제품 검색 열기 →</a>
+          <h2><span>송장 제품 검색</span><span class="inv-state" id="inv-state"></span></h2>
+          <div class="search-row">
+            <input type="text" id="inv-input" inputmode="numeric" autocomplete="off" placeholder="송장번호를 스캔하거나 입력 후 Enter">
+            <button id="inv-go">조회</button>
           </div>
+          <label class="inv-auto"><input type="checkbox" id="inv-auto" checked>상품이 1개면 공식몰을 바로 열기</label>
+          <div id="inv-result" aria-live="polite"></div>
         </div>
+        <div class="panel" id="inv-recent-panel" hidden>
+          <h2>최근 조회</h2>
+          <div id="inv-recent"></div>
+        </div>
+        <div class="panel" id="ez-panel">
+          <h2><span>이지어드민 엑셀 올리기</span><span class="inv-state" id="ez-state"></span></h2>
+          <p class="ez-help">무신사·29CM처럼 카페24에 없는 주문은 이지어드민 엑셀(확장주문검색2)을 올리면 찾을 수 있어요. 파일 안의 이름·연락처·주소는 읽지 않고, <b>송장번호와 상품 정보만</b> 올립니다.</p>
+          <div class="ez-row">
+            <input type="file" id="ez-file" accept=".xls,.xlsx,.csv">
+            <button id="ez-go">올리기</button>
+          </div>
+          <div class="ez-row" id="ez-key-row">
+            <input type="password" id="ez-key" placeholder="관리자 키 (처음 한 번만 입력)" autocomplete="off">
+          </div>
+          <div class="ez-msg" id="ez-msg" aria-live="polite"></div>
+          <div class="ez-row"><button class="ez-link" id="ez-forget" hidden>저장된 관리자 키 지우기</button></div>
+        </div>
+        <div class="note">카페24 주문은 자동으로, 무신사·29CM 등은 위에서 올린 이지어드민 엑셀로 송장번호를 찾습니다. 스캐너로 찍으면 바로 조회돼요.</div>
       </div>
 
       <div class="view" id="view-promo" hidden>
@@ -238,6 +291,7 @@
   const DOMAIN = 'WOOILSIN'; // VIVALAVIDA 도메인 코드
   const BASE = 'https://vivalavida-proxy.onrender.com/proxy/api/stock'; // CORS 프록시 경유
   const INTEGRATED_BASE = 'https://irelia-cib3.onrender.com/';
+  const INVOICE_API = 'https://vivalavida-cafe24.onrender.com';
 
   /* ---- Render 무료 서버 미리 깨워두기 ----
      Render 무료 플랜은 한동안 요청이 없으면 서버가 꺼졌다가, 다음 요청이 오면
@@ -249,14 +303,13 @@
   }
   function warmServers(){
     pingWarm(INTEGRATED_BASE);
+    pingWarm(INVOICE_API + '/health');
     pingWarm(`${BASE}/dashboard-status?domain=${DOMAIN}`);
   }
   warmServers();
   setInterval(warmServers, 9 * 60 * 1000); // 9분마다 (Render가 잠들기 전에 계속 깨워둠)
 
   const viewNames = ['search','viva','integrated','invoice','promo','incoming'];
-  const INVOICE_URL = 'https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw';
-  let invoiceAutoOpened = false;
 
   function switchView(name){
     document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
@@ -265,11 +318,7 @@
     viewNames.forEach(n=>{
       document.getElementById('view-'+n).hidden = (n !== name);
     });
-    // 송장 제품 검색 탭은 클릭 즉시 새 탭으로 검색 화면을 바로 열어줌 (버튼 한번 더 누르는 절차 생략)
-    if(name === 'invoice' && !invoiceAutoOpened){
-      invoiceAutoOpened = true;
-      window.open(INVOICE_URL, '_blank');
-    }
+    if(name === 'invoice') setTimeout(focusInvoiceInput, 0); // 탭을 열자마자 스캔할 수 있게 입력칸에 커서
   }
 
   document.querySelectorAll('.nav-item').forEach(btn=>{
@@ -355,6 +404,288 @@
     openStoreSearch(vivaInput.value.trim());
   });
   vivaInput.addEventListener('keydown', e=>{ if(e.key==='Enter') openStoreSearch(vivaInput.value.trim()); });
+
+
+  /* ---- 송장 제품 검색 (카페24 주문 데이터 → 상품 → 공식몰) ---- */
+  const invInput = document.getElementById('inv-input');
+  const invResult = document.getElementById('inv-result');
+  const invState = document.getElementById('inv-state');
+  const invAuto = document.getElementById('inv-auto');
+  const invRecentPanel = document.getElementById('inv-recent-panel');
+  const invRecentBox = document.getElementById('inv-recent');
+  let invBusy = false;
+  let invCurrent = [];
+  const invRecent = [];
+  try{ if(localStorage.getItem('inv-auto') === '0') invAuto.checked = false; }catch(e){}
+  invAuto.addEventListener('change', ()=>{ try{ localStorage.setItem('inv-auto', invAuto.checked ? '1' : '0'); }catch(e){} });
+
+  function invViewVisible(){ return !document.getElementById('view-invoice').hidden; }
+  function focusInvoiceInput(){ invInput.focus(); invInput.select(); }
+  window.addEventListener('focus', ()=>{ if(invViewVisible()) focusInvoiceInput(); }); // 공식몰 탭에서 돌아오면 바로 다음 스캔 가능
+
+  const stripTags = n => String(n || '').replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim();   // 앞쪽 [기모선택] 같은 말머리 제거
+  const kwOf = it => it.source === 'ezadmin' ? (stripTags(it.product_name) || it.product_name || '') : (it.product_name || '');
+  const productUrl = it => it.product_no
+    ? 'https://vlvd.kr/product/detail.html?product_no=' + encodeURIComponent(it.product_no)
+    : 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(kwOf(it));
+  const searchUrl = it => 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(it.product_name || '');
+  function openMall(url){ try{ return !!window.open(url, 'vlvd-product'); }catch(e){ return false; } }
+
+  function groupItems(items){
+    const map = new Map();
+    for(const it of items){
+      const key = (it.product_no || it.product_code || it.product_name) + '|' + (it.option_value || '');
+      if(!map.has(key)) map.set(key, {...it, quantity: 0, orders: new Set()});
+      const g = map.get(key);
+      g.quantity += Number(it.quantity) || 1;
+      g.orders.add(it.order_id);
+    }
+    return [...map.values()];
+  }
+
+  function optText(v){
+    v = String(v || '');
+    if(/^\s*\[.*\]\s*$/.test(v)) return '옵션: ' + v.replace(/^\s*\[|\]\s*$/g, '').replace(/-/g, ' / ');
+    return v.replace('Color=', '색상: ').replace('Size=', '사이즈: ');
+  }
+
+  function renderInvoice(no, data){
+    const isEz = data.source === 'ezadmin';
+    const grouped = groupItems((data.items || []).map(i => ({...i, source: data.source})));
+    invCurrent = grouped;
+    const distinct = new Set(grouped.map(g => g.product_no || g.product_name));
+    const carrier = (data.items || []).map(i => i.shipping_company_name).find(Boolean);
+    const channel = (data.items || []).map(i => i.channel).find(Boolean);
+    const head = `<div class="inv-head"><span class="inv-src${isEz ? ' ez' : ''}">${isEz ? '이지어드민' : '카페24'}</span><b>${escapeHtml(no)}</b>${channel ? ' · ' + escapeHtml(channel) : ''}${carrier ? ' · ' + escapeHtml(carrier) : ''} · 상품 ${distinct.size}종</div>`;
+    const cards = grouped.map((g, i) => `
+      <div class="inv-card">
+        <div class="pname">${escapeHtml(g.product_name || '(이름 없음)')}</div>
+        <div class="popt">${escapeHtml(optText(g.option_value))}</div>
+        <div class="pmeta">수량 ${g.quantity} · 주문 ${escapeHtml([...g.orders].filter(Boolean).join(', '))}${g.raw_name ? ' · 내부명 ' + escapeHtml(g.raw_name) : ''}</div>
+        <div class="pbtns">
+          <button class="main" data-act="product" data-i="${i}">${g.product_no ? '공식몰 상품 페이지 →' : '공식몰에서 검색 →'}</button>
+          <button class="btn-secondary" data-act="search" data-i="${i}">${g.product_no ? '상품명으로 검색' : '이름 전체로 검색'}</button>
+        </div>
+      </div>`).join('');
+    const multi = distinct.size > 1 ? '<div class="inv-warn">한 송장에 여러 상품이 있어요. 열어볼 상품의 버튼을 눌러 주세요.</div>' : '';
+    invResult.innerHTML = head + multi + cards;
+    return distinct.size === 1 ? grouped[0] : null;
+  }
+
+  function addRecent(no, name){
+    invRecent.unshift({no, name, t: new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})});
+    if(invRecent.length > 8) invRecent.pop();
+    invRecentPanel.hidden = false;
+    invRecentBox.innerHTML = invRecent.map(r => `
+      <div class="inv-recent-row" data-no="${escapeAttr(r.no)}"><span class="t">${escapeHtml(r.t)}</span><span class="n">${escapeHtml(r.no)}</span><span class="p">${escapeHtml(r.name || '')}</span></div>`).join('');
+  }
+
+  async function runInvoice(raw){
+    const no = String(raw || '').replace(/\D/g, '');
+    if(no.length < 6){
+      invResult.innerHTML = '<p class="err">송장번호(숫자)를 입력하거나 스캔해 주세요.</p>';
+      focusInvoiceInput();
+      return;
+    }
+    if(invBusy) return;
+    invBusy = true;
+    invInput.value = no;
+    invResult.innerHTML = '<p class="loading">조회 중...</p>';
+    const slow = setTimeout(()=>{ invState.textContent = '서버를 깨우는 중이에요 (최대 1분)…'; }, 4000);
+    const ctrl = new AbortController();
+    const abortTimer = setTimeout(()=>ctrl.abort(), 70000);
+    try{
+      const res = await fetch(`${INVOICE_API}/invoice?no=${encodeURIComponent(no)}`, {signal: ctrl.signal});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      if(!data.found){
+        invCurrent = [];
+        invResult.innerHTML = `<div class="inv-head"><b>${escapeHtml(no)}</b></div>
+          <p class="err">이 송장번호의 주문을 찾지 못했어요.<br>카페24 주문이면 최근 ${data.indexed ? data.indexed.days : 30}일 안에 송장이 등록된 건인지, 무신사·29CM 등이면 아래에서 최신 이지어드민 엑셀을 올렸는지 확인해 주세요.</p>`;
+        addRecent(no, '(찾지 못함)');
+        return;
+      }
+      const only = renderInvoice(no, data);
+      addRecent(no, (data.items[0] && data.items[0].product_name) || '');
+      if(only && invAuto.checked){
+        if(!openMall(productUrl(only))){
+          invResult.insertAdjacentHTML('afterbegin', '<div class="inv-warn">브라우저가 새 탭 열기를 막았어요. 아래 버튼을 눌러 열거나, 주소창 오른쪽의 팝업 차단 표시에서 "항상 허용"을 선택하세요.</div>');
+        }
+      }
+    }catch(e){
+      console.error(e);
+      invResult.innerHTML = '<p class="err">조회에 실패했어요. 잠시 후 다시 시도해 주세요.<br>(서버가 잠들어 있었다면 한 번 더 스캔하면 됩니다.)</p>';
+    }finally{
+      clearTimeout(slow); clearTimeout(abortTimer);
+      invState.textContent = '';
+      invBusy = false;
+      focusInvoiceInput();
+    }
+  }
+  document.getElementById('inv-go').addEventListener('click', ()=> runInvoice(invInput.value));
+  invInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); runInvoice(invInput.value); } });
+  invResult.addEventListener('click', e=>{
+    const b = e.target.closest('button[data-act]');
+    if(!b) return;
+    const it = invCurrent[Number(b.dataset.i)];
+    if(!it) return;
+    openMall(b.dataset.act === 'search' ? searchUrl(it) : productUrl(it));
+  });
+  invRecentBox.addEventListener('click', e=>{
+    const row = e.target.closest('.inv-recent-row');
+    if(row) runInvoice(row.dataset.no);
+  });
+
+
+  /* ---- 이지어드민 엑셀 → 송장/상품 정보만 서버에 등록 ---- */
+  const ezFile = document.getElementById('ez-file');
+  const ezGo = document.getElementById('ez-go');
+  const ezKey = document.getElementById('ez-key');
+  const ezKeyRow = document.getElementById('ez-key-row');
+  const ezForget = document.getElementById('ez-forget');
+  const ezMsg = document.getElementById('ez-msg');
+  const ezState = document.getElementById('ez-state');
+  const XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  let ezBusy = false;
+
+  const getKey = () => { try{ return localStorage.getItem('inv-admin-key') || ''; }catch(e){ return ''; } };
+  const setKey = v => { try{ v ? localStorage.setItem('inv-admin-key', v) : localStorage.removeItem('inv-admin-key'); }catch(e){} };
+  function syncKeyUi(){ const has = !!getKey(); ezKeyRow.hidden = has; ezForget.hidden = !has; }
+  syncKeyUi();
+  ezForget.addEventListener('click', ()=>{ setKey(''); syncKeyUi(); showEz('저장된 관리자 키를 지웠어요.', ''); });
+
+  function showEz(text, cls){ ezMsg.className = 'ez-msg' + (cls ? ' ' + cls : ''); ezMsg.textContent = text; }
+
+  function loadXlsx(){
+    if(window.XLSX) return Promise.resolve();
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = XLSX_SRC; s.onload = resolve;
+      s.onerror = ()=> reject(new Error('엑셀 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const norm = v => String(v == null ? '' : v).replace(/\s+/g, '');
+  function cleanName(name, opt){
+    let n = String(name || '').trim();
+    const color = String(opt || '').replace(/^\s*\[|\]\s*$/g, '').split('-')[0].trim();
+    if(color && n.endsWith(' ' + color)) n = n.slice(0, -color.length).trim();   // 끝에 붙은 색상 제거
+    return n;
+  }
+
+  // 시트 → { map: 송장번호 → items[], rows, used, noInvoice }  (이름·연락처·주소 열은 읽지 않음)
+  function parseEzSheet(aoa){
+    let h = -1, col = {};
+    const need = ['판매처','주문번호','송장번호','택배사','상품명','옵션명','판매처상품명','상품수량','바코드'];
+    for(let i = 0; i < Math.min(aoa.length, 15); i++){
+      const cells = (aoa[i] || []).map(norm);
+      if(cells.includes('송장번호') && cells.includes('상품명')){
+        h = i;
+        need.forEach(k => { col[k] = cells.indexOf(k); });
+        break;
+      }
+    }
+    if(h < 0) return null;
+    const map = new Map();
+    let rows = 0, used = 0, noInvoice = 0;
+    const get = (r, k) => col[k] >= 0 ? r[col[k]] : '';
+    for(let i = h + 1; i < aoa.length; i++){
+      const r = aoa[i];
+      if(!r || !r.length) continue;
+      if(!norm(get(r, '상품명')) && !norm(get(r, '판매처상품명'))) continue;
+      rows++;
+      const tokens = String(get(r, '송장번호') == null ? '' : get(r, '송장번호')).split(/[,\s\/]+/).map(t => t.replace(/\D/g, '')).filter(t => t.length >= 6);
+      if(!tokens.length){ noInvoice++; continue; }
+      const opt = String(get(r, '옵션명') || '').trim();
+      const raw = String(get(r, '상품명') || '').trim();
+      const sellerName = String(get(r, '판매처상품명') || '').trim();
+      const item = {
+        product_name: cleanName(sellerName || raw, opt),
+        raw_name: raw,
+        option_value: opt,
+        quantity: Number(get(r, '상품수량')) || 1,
+        order_id: String(get(r, '주문번호') || '').trim(),
+        shipping_company_name: String(get(r, '택배사') || '').trim(),
+        channel: String(get(r, '판매처') || '').trim(),
+        barcode: String(get(r, '바코드') || '').trim(),
+      };
+      used++;
+      for(const t of tokens){
+        if(!map.has(t)) map.set(t, []);
+        const list = map.get(t);
+        const dup = list.find(x => x.product_name === item.product_name && x.option_value === item.option_value && x.order_id === item.order_id);
+        if(dup) dup.quantity += item.quantity; else list.push({...item});
+      }
+    }
+    return {map, rows, used, noInvoice};
+  }
+
+  async function refreshEzStatus(){
+    try{
+      const res = await fetch(INVOICE_API + '/invoice/status');
+      if(!res.ok) return;
+      const d = await res.json();
+      const e = d.ezadmin || {};
+      if(!e.count){ ezState.textContent = '아직 올린 엑셀이 없어요'; return; }
+      const when = e.at ? new Date(e.at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+      ezState.textContent = `송장 ${e.count.toLocaleString('ko-KR')}건 등록됨${when ? ' · 마지막 ' + when : ''}`;
+    }catch(e){ /* 서버가 자는 중이면 조용히 넘어감 */ }
+  }
+  setTimeout(refreshEzStatus, 3000);
+
+  async function uploadEz(){
+    if(ezBusy) return;
+    const f = ezFile.files && ezFile.files[0];
+    if(!f){ showEz('먼저 이지어드민에서 받은 엑셀 파일을 선택해 주세요.', 'bad'); return; }
+    if(!getKey()){
+      const typed = ezKey.value.trim();
+      if(!typed){ showEz('관리자 키를 입력해 주세요. (처음 한 번만 입력하면 이 컴퓨터에 저장돼요.)', 'bad'); ezKey.focus(); return; }
+      setKey(typed); ezKey.value = ''; syncKeyUi();
+    }
+    ezBusy = true; ezGo.disabled = true;
+    try{
+      showEz('엑셀을 읽는 중이에요… (파일이 크면 몇십 초 걸려요)', '');
+      await loadXlsx();
+      const buf = await f.arrayBuffer();
+      await new Promise(r => setTimeout(r, 30));
+      const wb = XLSX.read(buf, {type: 'array', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, cellText: false});
+      let parsed = null;
+      for(const name of wb.SheetNames){
+        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], {header: 1, raw: true, defval: ''});
+        parsed = parseEzSheet(aoa);
+        if(parsed) break;
+      }
+      if(!parsed) throw new Error('엑셀에서 "송장번호"와 "상품명" 열을 찾지 못했어요. 이지어드민 확장주문검색2 엑셀이 맞는지 확인해 주세요.');
+      if(!parsed.map.size) throw new Error('송장번호가 들어 있는 줄이 없어요. 이지어드민 검색 조건에서 상태를 "송장"으로 두고 다시 받아 주세요.');
+      const entries = [...parsed.map.entries()].map(([no, items]) => ({no, items}));
+      const BATCH = 300;
+      let sent = 0;
+      for(let i = 0; i < entries.length; i += BATCH){
+        showEz(`서버에 올리는 중… ${Math.min(i + BATCH, entries.length).toLocaleString('ko-KR')} / ${entries.length.toLocaleString('ko-KR')}`, '');
+        const res = await fetch(INVOICE_API + '/invoice/import', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'x-admin-key': getKey()},
+          body: JSON.stringify({rows: entries.slice(i, i + BATCH)}),
+        });
+        if(res.status === 403){ setKey(''); syncKeyUi(); throw new Error('관리자 키가 맞지 않아요. 키를 다시 입력한 뒤 "올리기"를 눌러 주세요.'); }
+        if(!res.ok) throw new Error('서버 오류 (HTTP ' + res.status + ')');
+        const d = await res.json();
+        sent += d.imported || 0;
+      }
+      const skip = parsed.noInvoice ? ` (송장번호가 아직 없는 ${parsed.noInvoice}줄은 제외)` : '';
+      showEz(`완료! 송장 ${sent.toLocaleString('ko-KR')}건을 등록했어요${skip}. 이 엑셀에는 고객 개인정보가 들어 있으니 다운로드 폴더의 파일은 지워 주세요.`, 'ok');
+      ezFile.value = '';
+      refreshEzStatus();
+    }catch(e){
+      console.error(e);
+      showEz(e.message || '올리지 못했어요.', 'bad');
+    }finally{
+      ezBusy = false; ezGo.disabled = false;
+    }
+  }
+  ezGo.addEventListener('click', uploadEz);
 
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
