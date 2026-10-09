@@ -106,6 +106,29 @@
   details.panel .details-body{padding:0 16px 16px;}
   details.panel[open] summary{padding-bottom:6px;}
 
+
+  /* 송장 제품 검색 (카페24 주문 연동) */
+  .inv-auto{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--ink-soft);cursor:pointer;font-family:'Gaegu',sans-serif;}
+  .inv-auto input{width:18px;height:18px;accent-color:var(--accent);}
+  .inv-state{font-family:'Gaegu',sans-serif;font-size:12.5px;color:var(--muted);}
+  .inv-head{margin-top:16px;padding:12px 14px;border-radius:14px;background:#E4EEF8;font-size:14px;color:var(--ink-soft);line-height:1.6;}
+  .inv-head b{color:var(--accent-dark);font-family:'Jua',sans-serif;font-weight:400;font-size:16px;}
+  .inv-card{margin-top:10px;padding:14px;border:2px solid var(--line);border-radius:16px;background:var(--card);}
+  .inv-card .pname{font-family:'Jua',sans-serif;font-size:20px;color:var(--accent-dark);line-height:1.35;word-break:keep-all;}
+  .inv-card .popt{margin-top:4px;font-size:14.5px;color:var(--ink-soft);}
+  .inv-card .pmeta{margin-top:4px;font-size:12.5px;color:var(--muted);}
+  .inv-card .pbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .inv-card .pbtns button{flex:1;min-width:140px;padding:11px;font-size:14.5px;}
+  .inv-card .pbtns .main{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);}
+  .inv-card .pbtns .main:active{transform:translateY(2px);box-shadow:none;}
+  .inv-warn{margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4DE;color:#8A5A00;font-size:13px;line-height:1.55;}
+  .inv-recent-row{display:flex;gap:10px;align-items:baseline;padding:9px 6px;border-top:2px dashed var(--line);cursor:pointer;border-radius:10px;}
+  .inv-recent-row:first-child{border-top:none;}
+  .inv-recent-row:hover{background:#F1F7FC;}
+  .inv-recent-row .t{font-size:12px;color:var(--muted);flex-shrink:0;}
+  .inv-recent-row .n{font-family:'Jua',sans-serif;font-size:13.5px;color:var(--ink-soft);flex-shrink:0;}
+  .inv-recent-row .p{font-size:13.5px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
   /* external link card (used for 행사일정 / 입고캘린더) */
   .external-card{
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -196,14 +219,19 @@
 
       <div class="view" id="view-invoice" hidden>
         <div class="panel">
-          <h2>송장 제품 검색</h2>
-          <div class="external-card">
-            <div class="emoji">📦</div>
-            <div class="title">팀 공유 송장 제품 검색</div>
-            <div class="desc">송장번호로 상품을 찾는 기능은 이제 팀 전체가 공유하는 별도 페이지로 옮겼어요.<br>어느 컴퓨터에서 열어도 같은 데이터를 보고, 등록도 함께 할 수 있어요.</div>
-            <a class="big-btn" href="https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw" target="_blank">송장 제품 검색 열기 →</a>
+          <h2><span>송장 제품 검색</span><span class="inv-state" id="inv-state"></span></h2>
+          <div class="search-row">
+            <input type="text" id="inv-input" inputmode="numeric" autocomplete="off" placeholder="송장번호를 스캔하거나 입력 후 Enter">
+            <button id="inv-go">조회</button>
           </div>
+          <label class="inv-auto"><input type="checkbox" id="inv-auto" checked>상품이 1개면 공식몰 상품 페이지를 바로 열기</label>
+          <div id="inv-result" aria-live="polite"></div>
         </div>
+        <div class="panel" id="inv-recent-panel" hidden>
+          <h2>최근 조회</h2>
+          <div id="inv-recent"></div>
+        </div>
+        <div class="note">카페24 주문 데이터에서 송장번호로 상품을 찾습니다(최근 30일 주문, 송장이 카페24에 등록된 건). 스캐너로 찍으면 자동으로 조회돼요.</div>
       </div>
 
       <div class="view" id="view-promo" hidden>
@@ -238,6 +266,7 @@
   const DOMAIN = 'WOOILSIN'; // VIVALAVIDA 도메인 코드
   const BASE = 'https://vivalavida-proxy.onrender.com/proxy/api/stock'; // CORS 프록시 경유
   const INTEGRATED_BASE = 'https://irelia-cib3.onrender.com/';
+  const INVOICE_API = 'https://vivalavida-cafe24.onrender.com';
 
   /* ---- Render 무료 서버 미리 깨워두기 ----
      Render 무료 플랜은 한동안 요청이 없으면 서버가 꺼졌다가, 다음 요청이 오면
@@ -249,14 +278,13 @@
   }
   function warmServers(){
     pingWarm(INTEGRATED_BASE);
+    pingWarm(INVOICE_API + '/health');
     pingWarm(`${BASE}/dashboard-status?domain=${DOMAIN}`);
   }
   warmServers();
   setInterval(warmServers, 9 * 60 * 1000); // 9분마다 (Render가 잠들기 전에 계속 깨워둠)
 
   const viewNames = ['search','viva','integrated','invoice','promo','incoming'];
-  const INVOICE_URL = 'https://claude.ai/artifact/8t4r6MrMCAiJ6uZCj4wJsw';
-  let invoiceAutoOpened = false;
 
   function switchView(name){
     document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
@@ -265,11 +293,7 @@
     viewNames.forEach(n=>{
       document.getElementById('view-'+n).hidden = (n !== name);
     });
-    // 송장 제품 검색 탭은 클릭 즉시 새 탭으로 검색 화면을 바로 열어줌 (버튼 한번 더 누르는 절차 생략)
-    if(name === 'invoice' && !invoiceAutoOpened){
-      invoiceAutoOpened = true;
-      window.open(INVOICE_URL, '_blank');
-    }
+    if(name === 'invoice') setTimeout(focusInvoiceInput, 0); // 탭을 열자마자 스캔할 수 있게 입력칸에 커서
   }
 
   document.querySelectorAll('.nav-item').forEach(btn=>{
@@ -356,10 +380,131 @@
   });
   vivaInput.addEventListener('keydown', e=>{ if(e.key==='Enter') openStoreSearch(vivaInput.value.trim()); });
 
+
+  /* ---- 송장 제품 검색 (카페24 주문 데이터 → 상품 → 공식몰) ---- */
+  const invInput = document.getElementById('inv-input');
+  const invResult = document.getElementById('inv-result');
+  const invState = document.getElementById('inv-state');
+  const invAuto = document.getElementById('inv-auto');
+  const invRecentPanel = document.getElementById('inv-recent-panel');
+  const invRecentBox = document.getElementById('inv-recent');
+  let invBusy = false;
+  let invCurrent = [];
+  const invRecent = [];
+  try{ if(localStorage.getItem('inv-auto') === '0') invAuto.checked = false; }catch(e){}
+  invAuto.addEventListener('change', ()=>{ try{ localStorage.setItem('inv-auto', invAuto.checked ? '1' : '0'); }catch(e){} });
+
+  function invViewVisible(){ return !document.getElementById('view-invoice').hidden; }
+  function focusInvoiceInput(){ invInput.focus(); invInput.select(); }
+  window.addEventListener('focus', ()=>{ if(invViewVisible()) focusInvoiceInput(); }); // 공식몰 탭에서 돌아오면 바로 다음 스캔 가능
+
+  const productUrl = it => it.product_no
+    ? 'https://vlvd.kr/product/detail.html?product_no=' + encodeURIComponent(it.product_no)
+    : 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(it.product_name || '');
+  const searchUrl = it => 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(it.product_name || '');
+  function openMall(url){ try{ return !!window.open(url, 'vlvd-product'); }catch(e){ return false; } }
+
+  function groupItems(items){
+    const map = new Map();
+    for(const it of items){
+      const key = (it.product_no || it.product_code || it.product_name) + '|' + (it.option_value || '');
+      if(!map.has(key)) map.set(key, {...it, quantity: 0, orders: new Set()});
+      const g = map.get(key);
+      g.quantity += Number(it.quantity) || 1;
+      g.orders.add(it.order_id);
+    }
+    return [...map.values()];
+  }
+
+  function renderInvoice(no, data){
+    const grouped = groupItems(data.items || []);
+    invCurrent = grouped;
+    const distinct = new Set(grouped.map(g => g.product_no || g.product_name));
+    const carrier = (data.items || []).map(i => i.shipping_company_name).find(Boolean);
+    const head = `<div class="inv-head"><b>${escapeHtml(no)}</b>${carrier ? ' · ' + escapeHtml(carrier) : ''} · 상품 ${distinct.size}종</div>`;
+    const cards = grouped.map((g, i) => `
+      <div class="inv-card">
+        <div class="pname">${escapeHtml(g.product_name || '(이름 없음)')}</div>
+        <div class="popt">${escapeHtml((g.option_value || '').replace('Color=', '색상: ').replace('Size=', '사이즈: '))}</div>
+        <div class="pmeta">수량 ${g.quantity} · 주문 ${escapeHtml([...g.orders].join(', '))}</div>
+        <div class="pbtns">
+          <button class="main" data-act="product" data-i="${i}">공식몰 상품 페이지 →</button>
+          <button class="btn-secondary" data-act="search" data-i="${i}">상품명으로 검색</button>
+        </div>
+      </div>`).join('');
+    const multi = distinct.size > 1 ? '<div class="inv-warn">한 송장에 여러 상품이 있어요. 열어볼 상품의 버튼을 눌러 주세요.</div>' : '';
+    invResult.innerHTML = head + multi + cards;
+    return distinct.size === 1 ? grouped[0] : null;
+  }
+
+  function addRecent(no, name){
+    invRecent.unshift({no, name, t: new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})});
+    if(invRecent.length > 8) invRecent.pop();
+    invRecentPanel.hidden = false;
+    invRecentBox.innerHTML = invRecent.map(r => `
+      <div class="inv-recent-row" data-no="${escapeAttr(r.no)}"><span class="t">${escapeHtml(r.t)}</span><span class="n">${escapeHtml(r.no)}</span><span class="p">${escapeHtml(r.name || '')}</span></div>`).join('');
+  }
+
+  async function runInvoice(raw){
+    const no = String(raw || '').replace(/\D/g, '');
+    if(no.length < 6){
+      invResult.innerHTML = '<p class="err">송장번호(숫자)를 입력하거나 스캔해 주세요.</p>';
+      focusInvoiceInput();
+      return;
+    }
+    if(invBusy) return;
+    invBusy = true;
+    invInput.value = no;
+    invResult.innerHTML = '<p class="loading">조회 중...</p>';
+    const slow = setTimeout(()=>{ invState.textContent = '서버를 깨우는 중이에요 (최대 1분)…'; }, 4000);
+    const ctrl = new AbortController();
+    const abortTimer = setTimeout(()=>ctrl.abort(), 70000);
+    try{
+      const res = await fetch(`${INVOICE_API}/invoice?no=${encodeURIComponent(no)}`, {signal: ctrl.signal});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if(data.error) throw new Error(data.error);
+      if(!data.found){
+        invCurrent = [];
+        invResult.innerHTML = `<div class="inv-head"><b>${escapeHtml(no)}</b></div>
+          <p class="err">이 송장번호의 주문을 찾지 못했어요.<br>최근 ${data.indexed ? data.indexed.days : 30}일 안에 카페24로 들어온 주문이고, 카페24에 송장이 등록된 건인지 확인해 주세요.</p>`;
+        addRecent(no, '(찾지 못함)');
+        return;
+      }
+      const only = renderInvoice(no, data);
+      addRecent(no, (data.items[0] && data.items[0].product_name) || '');
+      if(only && invAuto.checked){
+        if(!openMall(productUrl(only))){
+          invResult.insertAdjacentHTML('afterbegin', '<div class="inv-warn">브라우저가 새 탭 열기를 막았어요. 아래 버튼을 눌러 열거나, 주소창 오른쪽의 팝업 차단 표시에서 "항상 허용"을 선택하세요.</div>');
+        }
+      }
+    }catch(e){
+      console.error(e);
+      invResult.innerHTML = '<p class="err">조회에 실패했어요. 잠시 후 다시 시도해 주세요.<br>(서버가 잠들어 있었다면 한 번 더 스캔하면 됩니다.)</p>';
+    }finally{
+      clearTimeout(slow); clearTimeout(abortTimer);
+      invState.textContent = '';
+      invBusy = false;
+      focusInvoiceInput();
+    }
+  }
+  document.getElementById('inv-go').addEventListener('click', ()=> runInvoice(invInput.value));
+  invInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); runInvoice(invInput.value); } });
+  invResult.addEventListener('click', e=>{
+    const b = e.target.closest('button[data-act]');
+    if(!b) return;
+    const it = invCurrent[Number(b.dataset.i)];
+    if(!it) return;
+    openMall(b.dataset.act === 'search' ? searchUrl(it) : productUrl(it));
+  });
+  invRecentBox.addEventListener('click', e=>{
+    const row = e.target.closest('.inv-recent-row');
+    if(row) runInvoice(row.dataset.no);
+  });
+
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
 })();
 </script>
 </body>
 </html>
-
