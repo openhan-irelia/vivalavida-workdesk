@@ -122,6 +122,22 @@
   .inv-card .pbtns .main{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);}
   .inv-card .pbtns .main:active{transform:translateY(2px);box-shadow:none;}
   .inv-warn{margin-top:10px;padding:10px 12px;border-radius:12px;background:#FFF4DE;color:#8A5A00;font-size:13px;line-height:1.55;}
+  .inv-src{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;font-size:11.5px;background:#E4EEF8;color:var(--accent-dark);vertical-align:2px;}
+  .inv-src.ez{background:#F3E6F8;color:#6B2C86;}
+  .ez-help{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:0 0 12px;}
+  .ez-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;}
+  .ez-row input[type=file]{flex:1;min-width:200px;font-size:13.5px;}
+  .ez-row input[type=password]{flex:1;min-width:200px;padding:10px 12px;border:2px solid var(--line);border-radius:12px;font-size:14px;background:var(--card);color:var(--ink);}
+  .ez-row[hidden],.ez-link[hidden]{display:none;}
+  #ez-go{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);padding:10px 20px;font-size:15px;}
+  #ez-go:disabled{opacity:.6;}
+  #ez-refresh{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dark);padding:10px 20px;font-size:15px;}
+  #ez-refresh:disabled{opacity:.6;}
+  .ez-manual{margin-top:14px;font-size:13.5px;color:var(--ink-soft);}
+  .ez-manual summary{cursor:pointer;color:var(--muted);}
+  .ez-msg{margin-top:12px;font-size:13.5px;line-height:1.6;color:var(--ink-soft);}
+  .ez-msg.ok{color:#1F7A45;} .ez-msg.bad{color:#B3261E;}
+  .ez-link{background:none;border:none;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:12.5px;padding:0;box-shadow:none;}
   .inv-recent-row{display:flex;gap:10px;align-items:baseline;padding:9px 6px;border-top:2px dashed var(--line);cursor:pointer;border-radius:10px;}
   .inv-recent-row:first-child{border-top:none;}
   .inv-recent-row:hover{background:#F1F7FC;}
@@ -224,14 +240,36 @@
             <input type="text" id="inv-input" inputmode="numeric" autocomplete="off" placeholder="송장번호를 스캔하거나 입력 후 Enter">
             <button id="inv-go">조회</button>
           </div>
-          <label class="inv-auto"><input type="checkbox" id="inv-auto" checked>상품이 1개면 공식몰 상품 페이지를 바로 열기</label>
+          <label class="inv-auto"><input type="checkbox" id="inv-auto" checked>상품이 1개면 공식몰을 바로 열기</label>
           <div id="inv-result" aria-live="polite"></div>
         </div>
         <div class="panel" id="inv-recent-panel" hidden>
           <h2>최근 조회</h2>
           <div id="inv-recent"></div>
         </div>
-        <div class="note">카페24 주문 데이터에서 송장번호로 상품을 찾습니다(최근 30일 주문, 송장이 카페24에 등록된 건). 스캐너로 찍으면 자동으로 조회돼요.</div>
+        <div class="panel" id="ez-panel">
+          <h2><span>이지어드민 엑셀</span><span class="inv-state" id="ez-state"></span></h2>
+          <p class="ez-help">무신사·29CM처럼 카페24에 없는 주문은 이지어드민 엑셀(확장주문검색2)로 찾습니다. 이지어드민에서 엑셀을 받은 뒤 <b>"엑셀 새로고침"</b>을 누르면, 정해 둔 폴더에서 새 파일을 찾아 <b>송장번호와 상품 정보만</b> 자동으로 올려요. (이름·연락처·주소는 읽지 않아요.)</p>
+          <div class="ez-row">
+            <button id="ez-refresh">엑셀 새로고침</button>
+            <button class="btn-secondary" id="ez-folder">폴더 연결</button>
+            <span class="inv-state" id="ez-folder-name"></span>
+          </div>
+          <label class="inv-auto"><input type="checkbox" id="ez-del" checked>올린 뒤 엑셀 파일은 자동으로 삭제 (개인정보 보호)</label>
+          <div class="ez-msg" id="ez-msg" aria-live="polite"></div>
+          <div class="ez-row" id="ez-key-row">
+            <input type="password" id="ez-key" placeholder="관리자 키 (처음 한 번만 입력)" autocomplete="off">
+          </div>
+          <details class="ez-manual">
+            <summary>폴더 없이 파일을 직접 골라서 올리기</summary>
+            <div class="ez-row">
+              <input type="file" id="ez-file" accept=".xls,.xlsx,.csv">
+              <button id="ez-go">올리기</button>
+            </div>
+          </details>
+          <div class="ez-row"><button class="ez-link" id="ez-forget" hidden>저장된 관리자 키 지우기</button></div>
+        </div>
+        <div class="note">카페24 주문은 자동으로, 무신사·29CM 등은 위에서 올린 이지어드민 엑셀로 송장번호를 찾습니다. 스캐너로 찍으면 바로 조회돼요.</div>
       </div>
 
       <div class="view" id="view-promo" hidden>
@@ -398,9 +436,11 @@
   function focusInvoiceInput(){ invInput.focus(); invInput.select(); }
   window.addEventListener('focus', ()=>{ if(invViewVisible()) focusInvoiceInput(); }); // 공식몰 탭에서 돌아오면 바로 다음 스캔 가능
 
+  const stripTags = n => String(n || '').replace(/^(\s*\[[^\]]*\]\s*)+/, '').trim();   // 앞쪽 [기모선택] 같은 말머리 제거
+  const kwOf = it => it.source === 'ezadmin' ? (stripTags(it.product_name) || it.product_name || '') : (it.product_name || '');
   const productUrl = it => it.product_no
     ? 'https://vlvd.kr/product/detail.html?product_no=' + encodeURIComponent(it.product_no)
-    : 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(it.product_name || '');
+    : 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(kwOf(it));
   const searchUrl = it => 'https://vlvd.kr/product/search.html?keyword=' + encodeURIComponent(it.product_name || '');
   function openMall(url){ try{ return !!window.open(url, 'vlvd-product'); }catch(e){ return false; } }
 
@@ -416,20 +456,28 @@
     return [...map.values()];
   }
 
+  function optText(v){
+    v = String(v || '');
+    if(/^\s*\[.*\]\s*$/.test(v)) return '옵션: ' + v.replace(/^\s*\[|\]\s*$/g, '').replace(/-/g, ' / ');
+    return v.replace('Color=', '색상: ').replace('Size=', '사이즈: ');
+  }
+
   function renderInvoice(no, data){
-    const grouped = groupItems(data.items || []);
+    const isEz = data.source === 'ezadmin';
+    const grouped = groupItems((data.items || []).map(i => ({...i, source: data.source})));
     invCurrent = grouped;
     const distinct = new Set(grouped.map(g => g.product_no || g.product_name));
     const carrier = (data.items || []).map(i => i.shipping_company_name).find(Boolean);
-    const head = `<div class="inv-head"><b>${escapeHtml(no)}</b>${carrier ? ' · ' + escapeHtml(carrier) : ''} · 상품 ${distinct.size}종</div>`;
+    const channel = (data.items || []).map(i => i.channel).find(Boolean);
+    const head = `<div class="inv-head"><span class="inv-src${isEz ? ' ez' : ''}">${isEz ? '이지어드민' : '카페24'}</span><b>${escapeHtml(no)}</b>${channel ? ' · ' + escapeHtml(channel) : ''}${carrier ? ' · ' + escapeHtml(carrier) : ''} · 상품 ${distinct.size}종</div>`;
     const cards = grouped.map((g, i) => `
       <div class="inv-card">
         <div class="pname">${escapeHtml(g.product_name || '(이름 없음)')}</div>
-        <div class="popt">${escapeHtml((g.option_value || '').replace('Color=', '색상: ').replace('Size=', '사이즈: '))}</div>
-        <div class="pmeta">수량 ${g.quantity} · 주문 ${escapeHtml([...g.orders].join(', '))}</div>
+        <div class="popt">${escapeHtml(optText(g.option_value))}</div>
+        <div class="pmeta">수량 ${g.quantity} · 주문 ${escapeHtml([...g.orders].filter(Boolean).join(', '))}${g.raw_name ? ' · 내부명 ' + escapeHtml(g.raw_name) : ''}</div>
         <div class="pbtns">
-          <button class="main" data-act="product" data-i="${i}">공식몰 상품 페이지 →</button>
-          <button class="btn-secondary" data-act="search" data-i="${i}">상품명으로 검색</button>
+          <button class="main" data-act="product" data-i="${i}">${g.product_no ? '공식몰 상품 페이지 →' : '공식몰에서 검색 →'}</button>
+          <button class="btn-secondary" data-act="search" data-i="${i}">${g.product_no ? '상품명으로 검색' : '이름 전체로 검색'}</button>
         </div>
       </div>`).join('');
     const multi = distinct.size > 1 ? '<div class="inv-warn">한 송장에 여러 상품이 있어요. 열어볼 상품의 버튼을 눌러 주세요.</div>' : '';
@@ -467,7 +515,7 @@
       if(!data.found){
         invCurrent = [];
         invResult.innerHTML = `<div class="inv-head"><b>${escapeHtml(no)}</b></div>
-          <p class="err">이 송장번호의 주문을 찾지 못했어요.<br>최근 ${data.indexed ? data.indexed.days : 30}일 안에 카페24로 들어온 주문이고, 카페24에 송장이 등록된 건인지 확인해 주세요.</p>`;
+          <p class="err">이 송장번호의 주문을 찾지 못했어요.<br>카페24 주문이면 최근 ${data.indexed ? data.indexed.days : 30}일 안에 송장이 등록된 건인지, 무신사·29CM 등이면 아래에서 최신 이지어드민 엑셀을 올렸는지 확인해 주세요.</p>`;
         addRecent(no, '(찾지 못함)');
         return;
       }
@@ -501,6 +549,307 @@
     const row = e.target.closest('.inv-recent-row');
     if(row) runInvoice(row.dataset.no);
   });
+
+
+  /* ---- 이지어드민 엑셀 → 송장/상품 정보만 서버에 등록 ---- */
+  const ezFile = document.getElementById('ez-file');
+  const ezGo = document.getElementById('ez-go');
+  const ezKey = document.getElementById('ez-key');
+  const ezKeyRow = document.getElementById('ez-key-row');
+  const ezForget = document.getElementById('ez-forget');
+  const ezMsg = document.getElementById('ez-msg');
+  const ezState = document.getElementById('ez-state');
+  const XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  let ezBusy = false;
+
+  const getKey = () => { try{ return localStorage.getItem('inv-admin-key') || ''; }catch(e){ return ''; } };
+  const setKey = v => { try{ v ? localStorage.setItem('inv-admin-key', v) : localStorage.removeItem('inv-admin-key'); }catch(e){} };
+  function syncKeyUi(){ const has = !!getKey(); ezKeyRow.hidden = has; ezForget.hidden = !has; }
+  syncKeyUi();
+  ezForget.addEventListener('click', ()=>{ setKey(''); syncKeyUi(); showEz('저장된 관리자 키를 지웠어요.', ''); });
+
+  function showEz(text, cls){ ezMsg.className = 'ez-msg' + (cls ? ' ' + cls : ''); ezMsg.textContent = text; }
+
+  function loadXlsx(){
+    if(window.XLSX) return Promise.resolve();
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement('script');
+      s.src = XLSX_SRC; s.onload = resolve;
+      s.onerror = ()=> reject(new Error('엑셀 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const norm = v => String(v == null ? '' : v).replace(/\s+/g, '');
+  function cleanName(name, opt){
+    let n = String(name || '').trim();
+    const color = String(opt || '').replace(/^\s*\[|\]\s*$/g, '').split('-')[0].trim();
+    if(color && n.endsWith(' ' + color)) n = n.slice(0, -color.length).trim();   // 끝에 붙은 색상 제거
+    return n;
+  }
+
+  // 못 읽었을 때 원인 파악용 요약 (앞 2줄, 앞 12칸, 칸당 8글자까지만)
+  function diagOf(aoa, kind){
+    const rows = aoa.slice(0, 2).map(r => (r || []).slice(0, 12).map(c => String(c == null ? '' : c).slice(0, 8)).join('|'));
+    return `${kind}, ${aoa.length}줄, 앞줄: ${rows.join(' // ')}`;
+  }
+
+  // 시트 → { map: 송장번호 → items[], rows, used, noInvoice }  (이름·연락처·주소 열은 읽지 않음)
+  function parseEzSheet(aoa){
+    let h = -1, col = {};
+    const need = ['판매처','주문번호','송장번호','택배사','상품명','옵션명','판매처상품명','상품수량','바코드'];
+    const findCol = (cells, name) => {
+      let i = cells.indexOf(name);
+      if(i < 0) i = cells.findIndex(c => c.startsWith(name));
+      if(i < 0 && name !== '상품명') i = cells.findIndex(c => c.includes(name));
+      return i;
+    };
+    for(let i = 0; i < Math.min(aoa.length, 40); i++){
+      const cells = (aoa[i] || []).map(norm);
+      if(cells.some(c => c.includes('송장번호')) && cells.some(c => c.includes('상품명'))){
+        h = i;
+        need.forEach(k => { col[k] = findCol(cells, k); });
+        break;
+      }
+    }
+    if(h < 0) return null;
+    const map = new Map();
+    let rows = 0, used = 0, noInvoice = 0;
+    const get = (r, k) => col[k] >= 0 ? r[col[k]] : '';
+    for(let i = h + 1; i < aoa.length; i++){
+      const r = aoa[i];
+      if(!r || !r.length) continue;
+      if(!norm(get(r, '상품명')) && !norm(get(r, '판매처상품명'))) continue;
+      rows++;
+      const tokens = String(get(r, '송장번호') == null ? '' : get(r, '송장번호')).split(/[,\s\/]+/).map(t => t.replace(/\D/g, '')).filter(t => t.length >= 6);
+      if(!tokens.length){ noInvoice++; continue; }
+      const opt = String(get(r, '옵션명') || '').trim();
+      const raw = String(get(r, '상품명') || '').trim();
+      const sellerName = String(get(r, '판매처상품명') || '').trim();
+      const item = {
+        product_name: cleanName(sellerName || raw, opt),
+        raw_name: raw,
+        option_value: opt,
+        quantity: Number(get(r, '상품수량')) || 1,
+        order_id: String(get(r, '주문번호') || '').trim(),
+        shipping_company_name: String(get(r, '택배사') || '').trim(),
+        channel: String(get(r, '판매처') || '').trim(),
+        barcode: String(get(r, '바코드') || '').trim(),
+      };
+      used++;
+      for(const t of tokens){
+        if(!map.has(t)) map.set(t, []);
+        const list = map.get(t);
+        const dup = list.find(x => x.product_name === item.product_name && x.option_value === item.option_value && x.order_id === item.order_id);
+        if(dup) dup.quantity += item.quantity; else list.push({...item});
+      }
+    }
+    return {map, rows, used, noInvoice};
+  }
+
+  async function refreshEzStatus(){
+    try{
+      const res = await fetch(INVOICE_API + '/invoice/status');
+      if(!res.ok) return;
+      const d = await res.json();
+      const e = d.ezadmin || {};
+      if(!e.count){ ezState.textContent = '아직 올린 엑셀이 없어요'; return; }
+      const when = e.at ? new Date(e.at).toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+      ezState.textContent = `송장 ${e.count.toLocaleString('ko-KR')}건 등록됨${when ? ' · 마지막 ' + when : ''}`;
+    }catch(e){ /* 서버가 자는 중이면 조용히 넘어감 */ }
+  }
+  setTimeout(refreshEzStatus, 3000);
+
+  // 파일 1개를 읽어 서버에 올림 → {sent, noInvoice}
+  async function ezProcessFile(f){
+    showEz(`"${f.name}" 읽는 중이에요… (파일이 크면 몇십 초 걸려요)`, '');
+    await loadXlsx();
+    const buf = await f.arrayBuffer();
+    await new Promise(r => setTimeout(r, 30));
+    let parsed = null, diag = '';
+    const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, 4096));
+    const isBiff = head[0] === 0xD0 && head[1] === 0xCF && head[2] === 0x11 && head[3] === 0xE0;
+    const isZip = head[0] === 0x50 && head[1] === 0x4B;
+    const headTxt = new TextDecoder('latin1').decode(head);
+    if(!isBiff && !isZip && /<\s*(html|table|meta|tr|style)/i.test(headTxt)){
+      // 이지어드민 엑셀은 이름만 .xls 이고 실제로는 웹페이지(HTML) 표인 경우가 있음
+      let cs = (headTxt.match(/charset\s*=\s*["']?([\w-]+)/i) || [])[1] || 'utf-8';
+      let text;
+      try{ text = new TextDecoder(cs).decode(buf); }catch(e){ text = new TextDecoder('utf-8').decode(buf); }
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const aoa = [];
+      doc.querySelectorAll('tr').forEach(tr => {
+        const row = [];
+        for(const c of tr.children){
+          if(c.tagName !== 'TD' && c.tagName !== 'TH') continue;
+          row.push((c.textContent || '').replace(/\u00a0/g, ' ').trim());
+          const span = parseInt(c.getAttribute('colspan') || '1', 10);
+          for(let k = 1; k < span && k < 300; k++) row.push('');
+        }
+        aoa.push(row);
+      });
+      parsed = parseEzSheet(aoa);
+      diag = diagOf(aoa, 'HTML표/' + cs);
+    }else{
+      const wb = XLSX.read(buf, {type: 'array', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false, cellText: false});
+      for(const name of wb.SheetNames){
+        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], {header: 1, raw: true, defval: ''});
+        parsed = parseEzSheet(aoa);
+        if(parsed) break;
+        diag = diagOf(aoa, '엑셀/' + name);
+      }
+    }
+    if(!parsed) throw new Error(`"${f.name}"에서 "송장번호"와 "상품명" 열을 찾지 못했어요. 이지어드민 확장주문검색2 엑셀이 맞는지 확인해 주세요. [점검: ${diag}]`);
+    if(!parsed.map.size) throw new Error(`"${f.name}"에 송장번호가 들어 있는 줄이 없어요. 이지어드민 검색 조건에서 상태를 "송장"으로 두고 다시 받아 주세요.`);
+    const entries = [...parsed.map.entries()].map(([no, items]) => ({no, items}));
+    showEz('서버를 깨우는 중이에요… (최대 1분)', '');
+    try{
+      const st = await fetch(INVOICE_API + '/invoice/status');
+      const sd = await st.json().catch(() => ({}));
+      if(!st.ok || !sd.ezadmin) throw new Error('old');
+    }catch(e){
+      throw new Error('서버에 연결하지 못했거나, 서버가 아직 새 버전(server.js)으로 바뀌지 않았어요. Render에서 vivalavida-cafe24가 Live인지 확인하고 1분 뒤 다시 시도해 주세요.');
+    }
+    const BATCH = 300;
+    let sent = 0;
+    for(let i = 0; i < entries.length; i += BATCH){
+      showEz(`서버에 올리는 중… ${Math.min(i + BATCH, entries.length).toLocaleString('ko-KR')} / ${entries.length.toLocaleString('ko-KR')}`, '');
+      let res;
+      try{
+        res = await fetch(INVOICE_API + '/invoice/import', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'x-admin-key': getKey()},
+          body: JSON.stringify({rows: entries.slice(i, i + BATCH)}),
+        });
+      }catch(e){
+        throw new Error('서버로 보내지 못했어요. 서버가 Live 상태인지 확인해 주세요. (엑셀 읽기는 성공: 송장 ' + entries.length + '건)');
+      }
+      if(res.status === 403){ setKey(''); syncKeyUi(); throw new Error('관리자 키가 맞지 않아요. 키를 다시 입력한 뒤 다시 눌러 주세요.'); }
+      if(!res.ok) throw new Error('서버 오류 (HTTP ' + res.status + ')');
+      const d = await res.json();
+      sent += d.imported || 0;
+    }
+    return {sent, noInvoice: parsed.noInvoice};
+  }
+
+  function needKey(){
+    if(getKey()) return true;
+    const typed = ezKey.value.trim();
+    if(!typed){ showEz('관리자 키를 입력해 주세요. (처음 한 번만 입력하면 이 컴퓨터에 저장돼요.)', 'bad'); ezKey.focus(); return false; }
+    setKey(typed); ezKey.value = ''; syncKeyUi();
+    return true;
+  }
+  const doneMsg = (sent, noInv) => `완료! 송장 ${sent.toLocaleString('ko-KR')}건을 등록했어요${noInv ? ` (송장번호가 아직 없는 ${noInv}줄은 제외)` : ''}.`;
+
+  // 직접 파일 선택
+  async function uploadEz(){
+    if(ezBusy) return;
+    const f = ezFile.files && ezFile.files[0];
+    if(!f){ showEz('먼저 이지어드민에서 받은 엑셀 파일을 선택해 주세요.', 'bad'); return; }
+    if(!needKey()) return;
+    ezBusy = true; ezGo.disabled = true; ezRefresh.disabled = true;
+    try{
+      const r = await ezProcessFile(f);
+      showEz(doneMsg(r.sent, r.noInvoice) + ' 이 엑셀에는 고객 개인정보가 들어 있으니 다운로드 폴더의 파일은 지워 주세요.', 'ok');
+      ezFile.value = '';
+      refreshEzStatus();
+    }catch(e){
+      console.error(e); showEz(e.message || '올리지 못했어요.', 'bad');
+    }finally{ ezBusy = false; ezGo.disabled = false; ezRefresh.disabled = false; }
+  }
+
+  /* ---- 폴더 연결: 정해 둔 폴더의 새 엑셀을 자동으로 찾아서 올림 (Chrome/Edge) ---- */
+  const ezRefresh = document.getElementById('ez-refresh');
+  const ezFolderBtn = document.getElementById('ez-folder');
+  const ezFolderName = document.getElementById('ez-folder-name');
+  const ezDel = document.getElementById('ez-del');
+  const FS_OK = typeof window.showDirectoryPicker === 'function';
+  let ezDir = null;
+  try{ if(localStorage.getItem('ez-del') === '0') ezDel.checked = false; }catch(e){}
+  ezDel.addEventListener('change', ()=>{ try{ localStorage.setItem('ez-del', ezDel.checked ? '1' : '0'); }catch(e){} });
+
+  function idbOpen(){ return new Promise((res, rej)=>{ const r = indexedDB.open('viva-ez', 1); r.onupgradeneeded = ()=> r.result.createObjectStore('kv'); r.onsuccess = ()=> res(r.result); r.onerror = ()=> rej(r.error); }); }
+  async function idbGet(k){ try{ const db = await idbOpen(); return await new Promise((res, rej)=>{ const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = ()=> res(q.result); q.onerror = ()=> rej(q.error); }); }catch(e){ return null; } }
+  async function idbSet(k, v){ try{ const db = await idbOpen(); await new Promise((res, rej)=>{ const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = ()=> rej(t.error); }); }catch(e){} }
+
+  const seenList = () => { try{ return JSON.parse(localStorage.getItem('ez-seen') || '[]'); }catch(e){ return []; } };
+  const markSeen = k => { try{ const l = seenList(); l.push(k); localStorage.setItem('ez-seen', JSON.stringify(l.slice(-60))); }catch(e){} };
+
+  function folderUi(){
+    if(!FS_OK){ ezFolderBtn.hidden = true; ezFolderName.textContent = '이 브라우저는 폴더 연결을 지원하지 않아요 (Chrome·Edge 사용)'; return; }
+    ezFolderBtn.textContent = ezDir ? '폴더 바꾸기' : '폴더 연결';
+    ezFolderName.textContent = ezDir ? '연결된 폴더: ' + ezDir.name : '아직 폴더가 연결되지 않았어요';
+  }
+  (async ()=>{ if(FS_OK){ ezDir = await idbGet('dir'); } folderUi(); setTimeout(()=> ezCheck(false), 4000); })();
+
+  async function ezLinkFolder(){
+    try{
+      const h = await window.showDirectoryPicker({id: 'viva-ezadmin', mode: 'readwrite'});
+      ezDir = h; await idbSet('dir', h); folderUi();
+      showEz('폴더를 연결했어요. 이제 이지어드민에서 받은 엑셀을 이 폴더에 두고 "엑셀 새로고침"을 누르세요.', 'ok');
+      return true;
+    }catch(e){
+      if(e && e.name === 'AbortError') return false;
+      console.error(e);
+      showEz('이 폴더는 연결할 수 없어요. "다운로드" 폴더 자체는 브라우저가 막아 두었어요. 문서 안에 새 폴더(예: 이지어드민)를 만들고, 크롬 설정 > 다운로드 > 위치를 그 폴더로 바꾼 뒤 연결해 주세요.', 'bad');
+      return false;
+    }
+  }
+
+  // 폴더의 새 파일을 모두 올림. gesture=true: 버튼 클릭(권한 요청 가능), false: 자동 확인(조용히)
+  async function ezCheck(gesture){
+    if(ezBusy || !ezDir) return;
+    if(!getKey() && !(gesture && needKey())) return;
+    let perm = 'denied';
+    try{
+      perm = await ezDir.queryPermission({mode: 'readwrite'});
+      if(perm !== 'granted' && gesture) perm = await ezDir.requestPermission({mode: 'readwrite'});
+    }catch(e){ console.error(e); }
+    if(perm !== 'granted'){ if(gesture) showEz('폴더 접근을 허용해 주세요. 상단에 뜨는 "허용" 버튼을 눌러야 해요.', 'bad'); return; }
+    ezBusy = true; ezGo.disabled = true; ezRefresh.disabled = true;
+    try{
+      const seen = new Set(seenList());
+      const found = [];
+      for await (const [name, h] of ezDir.entries()){
+        if(h.kind !== 'file' || !/\.(xls|xlsx|csv)$/i.test(name)) continue;
+        const f = await h.getFile();
+        const key = `${name}|${f.lastModified}|${f.size}`;
+        if(f.size > 0 && !seen.has(key)) found.push({name, f, key});
+      }
+      if(!found.length){
+        if(gesture) showEz('새 엑셀 파일이 없어요. 이지어드민에서 엑셀을 받아 연결된 폴더에 저장한 뒤 다시 눌러 주세요.', '');
+        return;
+      }
+      found.sort((a, b) => a.f.lastModified - b.f.lastModified);
+      let total = 0, okFiles = 0, deleted = 0; const errs = [];
+      for(const it of found){
+        try{
+          const r = await ezProcessFile(it.f);
+          total += r.sent; okFiles++; markSeen(it.key);
+          if(ezDel.checked){ try{ await ezDir.removeEntry(it.name); deleted++; }catch(e){ console.error(e); } }
+        }catch(e){ console.error(e); errs.push(e.message); if(/관리자 키|서버/.test(e.message)) break; }
+      }
+      if(okFiles){
+        showEz(`완료! 파일 ${okFiles}개에서 송장 ${total.toLocaleString('ko-KR')}건을 등록했어요.` + (ezDel.checked ? (deleted === okFiles ? ' 올린 엑셀 파일은 삭제했어요.' : ' (파일 삭제는 하지 못했어요. 직접 지워 주세요.)') : ' 개인정보가 들어 있으니 파일은 직접 지워 주세요.') + (errs.length ? ' / 올리지 못한 파일: ' + errs.join(' ') : ''), errs.length ? '' : 'ok');
+        refreshEzStatus();
+      }else{
+        showEz(errs.join(' '), 'bad');
+      }
+    }catch(e){
+      console.error(e); if(gesture) showEz('폴더를 읽지 못했어요: ' + (e.message || e), 'bad');
+    }finally{ ezBusy = false; ezGo.disabled = false; ezRefresh.disabled = false; }
+  }
+
+  ezFolderBtn.addEventListener('click', async ()=>{ if(await ezLinkFolder()) ezCheck(true); });
+  ezRefresh.addEventListener('click', async ()=>{
+    if(!FS_OK){ showEz('이 브라우저에서는 폴더 연결을 쓸 수 없어요. 아래 "직접 골라서 올리기"를 이용해 주세요.', 'bad'); return; }
+    if(!ezDir){ if(!(await ezLinkFolder())) return; }
+    ezCheck(true);
+  });
+  // 이지어드민 탭에서 엑셀을 받고 돌아오면 / 5분마다 새 파일을 조용히 확인
+  window.addEventListener('focus', ()=> ezCheck(false));
+  setInterval(()=> ezCheck(false), 5 * 60 * 1000);
+  ezGo.addEventListener('click', uploadEz);
 
   function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function escapeAttr(s){ return escapeHtml(s); }
